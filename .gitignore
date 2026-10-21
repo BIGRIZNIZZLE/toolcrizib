@@ -1,0 +1,4 @@
+tools/*.jsonl
+tools/*.new.jsonl
+tools/__pycache__/
+node_modules/

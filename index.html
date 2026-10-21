@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ToolLog: Power Tools &amp; Batteries</title>
+<meta name="description" content="Inventory every power tool, battery and charger: serials, price paid, warranty, battery platforms, insurance list. Works offline; your data stays on your device.">
+<meta name="theme-color" content="#f3f5f9" id="themeColor">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ToolLog">
+<meta property="og:title" content="ToolLog · RIZNOSS Chamber 02">
+<meta property="og:description" content="Every power tool and battery you own: serials, warranty, platforms, insurance list. Free, private, works offline.">
+<meta property="og:image" content="https://bigriznizzle.github.io/toollog/img/og-toollog.jpg">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><span>ToolLog</span><a href="#/about" class="rz-mark" aria-label="About ToolLog, a RIZNOSS app"><img src="img/riznoss-crest-solid.webp" alt="" width="22" height="25" decoding="async"></a></div>
+  <div class="top-right"><a href="#/dash" class="bell" id="bell" aria-label="Reminders on the dashboard"><svg viewBox="0 0 24 24" class="ic"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="bell-count" id="bellCount" hidden></span></a></div>
+</header>
+<button type="button" class="update-bar" id="updateBar" hidden>Update available, tap to reload</button>
+<main id="app" tabindex="-1"></main>
+<button class="fab" id="fab" aria-label="Add a tool or battery" hidden><svg viewBox="0 0 24 24" class="ic"><path d="M12 5v14M5 12h14"/></svg></button>
+<nav class="tabbar" id="tabbar">
+  <a href="#/dash" data-tab="dash"><svg viewBox="0 0 24 24" class="ic"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg><span>Dashboard</span></a>
+  <a href="#/tools" data-tab="tools"><svg viewBox="0 0 24 24" class="ic"><path d="M3 7h11l2 2v3H9l-1 2H6l1-2H3z"/><path d="M16 9h3"/><path d="M8 14l-1 7h4l1-7"/></svg><span>Inventory</span></a>
+  <a href="#/power" data-tab="power"><svg viewBox="0 0 24 24" class="ic"><rect x="3" y="7" width="16" height="11" rx="2"/><path d="M21 11v3"/><path d="M7 11v3M11 11v3M15 11v3"/></svg><span>Batteries</span></a>
+  <a href="#/export" data-tab="export"><svg viewBox="0 0 24 24" class="ic"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>Insurance</span></a>
+  <a href="#/more" data-tab="more"><svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>Settings</span></a>
+</nav>
+<dialog id="sheet" class="sheet"><form method="dialog" class="sheet-inner" id="sheetForm" novalidate></form></dialog>
+<dialog id="confirm" class="confirm"><div class="confirm-inner" id="confirmInner"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<script src="taxonomy.js"></script>
+<script src="app.js"></script>
+<script src="sync.js"></script>
+</body>
+</html>

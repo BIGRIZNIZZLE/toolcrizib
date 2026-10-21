@@ -1,0 +1,1 @@
+`supabase.js` is the UMD build of [@supabase/supabase-js](https://github.com/supabase/supabase-js) v2.109.0 (MIT License, © Supabase). It's bundled here so sync doesn't depend on a CDN at runtime. The app loads it only when you use Account & sync.
