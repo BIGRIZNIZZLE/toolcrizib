@@ -1,4 +1,4 @@
-/* ToolLog shared taxonomy: battery platforms + tool types. Used by the app and by tools/build-catalog.js. */
+/* Tool Crizib shared taxonomy: battery platforms + tool types. Used by the app and by tools/build-catalog.js. */
 (function (root) {
   'use strict';
   const PLATFORMS = [

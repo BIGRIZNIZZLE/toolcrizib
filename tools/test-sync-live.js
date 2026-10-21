@@ -3,7 +3,7 @@
 const puppeteer = require('/workspace/autolog/tools/node_modules/puppeteer-core');
 const A = require('/workspace/autolog/tools/sbadmin');
 const ORIGIN = process.env.ORIGIN || 'http://127.0.0.1:8813';
-const TL = ORIGIN + '/toollog/index.html', AL = ORIGIN + '/autolog/index.html';
+const TL = ORIGIN + '/toolcrizib/index.html', AL = ORIGIN + '/autolog/index.html';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-supabase-api-version, accept-profile, content-profile, prefer', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const r = {}, errors = [], users = [];
@@ -46,7 +46,7 @@ async function newPage(ctx, label, url) {
   await pt.evaluate(() => document.querySelector('[data-act="sample"]').click()); await sleep(1500);
   const tlN = await pt.evaluate(() => { const d = window.ToolLogApp.getDb(); return d.items.length + d.kits.length + d.custom.length; });
   const otp = await signIn(pt, u.email, 'ToolLogSync', '#/more');
-  check('ToolLog OTP request: email + redirect to toollog', otp && otp.email === u.email && /toollog/.test(decodeURIComponent(otp.url)), otp && decodeURIComponent(otp.url));
+  check('OTP request: email + emailRedirectTo is /toolcrizib/', otp && otp.email === u.email && /[?&]redirect_to=https?%3A%2F%2F[^&]*%2Ftoolcrizib%2F/.test(otp.url), otp && decodeURIComponent(otp.url));
   const r1 = await rows(u.id); const tlRows = r1.filter(x => String(x.id).startsWith('tl:'));
   check('ToolLog pushed namespaced rows', tlRows.length === tlN && tlRows.every(x => x.kind === 'maint' && x.vid === '__toollog' && !x.deleted), { tlN, got: tlRows.length });
   check('AutoLog rows untouched by ToolLog', r1.filter(x => !String(x.id).startsWith('tl:') && !x.deleted).length === alRows);

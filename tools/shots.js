@@ -1,6 +1,6 @@
 // Screenshots (dark + light) of the main screens, iPhone-sized viewport
 const puppeteer = require('/workspace/autolog/tools/node_modules/puppeteer-core');
-const BASE = process.env.BASE || 'http://127.0.0.1:8813/toollog/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8813/toolcrizib/';
 const OUT = __dirname + '/../screenshots/'; require('fs').mkdirSync(OUT, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {

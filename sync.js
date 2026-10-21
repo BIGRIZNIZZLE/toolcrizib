@@ -1,8 +1,8 @@
-/* ToolLog optional cross-device sync (Supabase), shared with AutoLog's project and table.
-   Namespacing: every ToolLog record is stored as kind 'maint' with id 'tl:<type>:<id>' and data._vid = '__toollog'.
+/* Tool Crizib optional cross-device sync (Supabase), shared with AutoLog's project and table.
+   Namespacing: every Tool Crizib record is stored as kind 'maint' with id 'tl:<type>:<id>' and data._vid = '__toollog'.
    - The table's kind check only allows AutoLog's kinds, so a new kind would be rejected; 'maint' is allowed.
    - AutoLog clients keep a 'maint' row whose _vid matches none of their vehicles as an orphan (never rebuilt, never tombstoned),
-     so AutoLog can't delete ToolLog data, and ToolLog only reads/writes ids starting with 'tl:' so it can't touch AutoLog's.
+     so AutoLog can't delete Tool Crizib data, and Tool Crizib only reads/writes ids starting with 'tl:' so it can't touch AutoLog's.
    Merge is per record, newest updated_at wins (enforced server-side by the records_lww trigger); deletes are tombstones.
    Photos stay on the device (IndexedDB); only their ids sync. */
 (function () {

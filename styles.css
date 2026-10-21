@@ -553,7 +553,7 @@ dialog{max-height:100vh;max-height:100dvh;overscroll-behavior:contain}
 .sheet-body{overflow-y:auto;overflow-x:hidden;min-height:0;flex:1 1 auto}
 html.modal-open,html.modal-open body{overflow:hidden;overscroll-behavior:none}
 
-/* ================= ToolLog (Chamber 02) ================= */
+/* ================= Tool Crizib (Chamber 02) ================= */
 :root{--accent:#2f63c9;--accent-soft:#e3ebfb;--steel:#9aa3b2;--c-ryobi:#7d8a2e;--c-mil:#a33a3a}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#07090f;--surface:#10151f;--surface-2:#171e2b;--line:#232c3c;--accent:#5d8eef;--accent-soft:#16233f;--c-ryobi:#c3d36a;--c-mil:#ef7a7a}}
 :root[data-theme=dark]{--bg:#07090f;--surface:#10151f;--surface-2:#171e2b;--line:#232c3c;--accent:#5d8eef;--accent-soft:#16233f;--c-ryobi:#c3d36a;--c-mil:#ef7a7a}

@@ -1,6 +1,6 @@
 // End-to-end flows in Chrome (mobile viewport): sample data, catalog add (kit w/ pieces), price rule, views, CSV, print, migration
 const puppeteer = require('/workspace/autolog/tools/node_modules/puppeteer-core');
-const BASE = process.env.BASE || 'http://127.0.0.1:8813/toollog/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8813/toolcrizib/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {

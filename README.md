@@ -1,8 +1,8 @@
-# ToolLog · RIZNOSS Chamber 02 — "The Shaolin Arsenal"
+# Tool Crizib · RIZNOSS Chamber 02 — "The Shaolin Arsenal"
 
 Inventory for your power tools, batteries and chargers. It's a free, private, offline-first PWA.
 
-**App:** https://bigriznizzle.github.io/toollog/ · **Invite page:** https://bigriznizzle.github.io/toollog/join/
+**App:** https://bigriznizzle.github.io/toolcrizib/ · **Invite page:** https://bigriznizzle.github.io/toolcrizib/join/
 
 ## What it does
 - **Inventory:** group by brand, tool type, battery platform, location or kit. Filter by tools, batteries or chargers, and search by name, model, serial or who has it.
@@ -18,14 +18,17 @@ Inventory for your power tools, batteries and chargers. It's a free, private, of
   - RYOBI: https://www.ryobitools.com/sitemap.xml
   - Milwaukee: https://www.milwaukeetool.com/sitemap.xml
 - Every entry carries its source URL (`u`). Model numbers and names are exactly as published.
-- Accessories, hand tools and consumables are filtered out. Tool type is ToolLog's own grouping.
+- Accessories, hand tools and consumables are filtered out. Tool type is Tool Crizib's own grouping.
 - **Refresh:** run `tools/update-catalog.sh`, then bump `CACHE` in `sw.js`. The crawl uses an honest User-Agent and 2–3 requests at a time, and it stops on any block.
 
+## Formerly ToolLog
+The app was first published as ToolLog at /toollog/. That path is now a small redirect site (repo BIGRIZNIZZLE/toollog) that sends every old link, including home-screen icons, to /toolcrizib/ and retires the old service worker. Internal storage keys (`toollog:*`), the photo database and the sync ids (`tl:*`, owner `__toollog`) are unchanged on purpose, so existing data and sign-ins carry over (same origin).
+
 ## Sync design
-ToolLog shares the AutoLog Supabase project and its `records` table.
-- **How records are stored:** each ToolLog record is a `maint` row with id `tl:<item|kit|custom>:<id>` and `data._vid = "__toollog"`.
+Tool Crizib shares the AutoLog Supabase project and its `records` table.
+- **How records are stored:** each Tool Crizib record is a `maint` row with id `tl:<item|kit|custom>:<id>` and `data._vid = "__toollog"`.
 - **AutoLog keeps them:** every AutoLog version keeps such rows as orphans, which it never shows, never rebuilds and never tombstones. `tools/test-sync-compat.js` checks this against every shipped AutoLog `sync.js`, and `tools/test-sync-live.js` checks it end to end.
-- **ToolLog stays in its lane:** it only reads `tl:` rows, and it uses its own auth storage key, cache names and service-worker scope.
+- **Tool Crizib stays in its lane:** it only reads `tl:` rows, and it uses its own auth storage key, cache names and service-worker scope.
 
 ## Tests
 Serve `/workspace` on 127.0.0.1:8813, then run:
@@ -35,6 +38,6 @@ Serve `/workspace` on 127.0.0.1:8813, then run:
 - `node tools/test-sync-compat.js`
 - `node tools/test-sync-live.js` (creates and deletes throwaway users)
 
-RYOBI, ONE+, Milwaukee, M18, M12, MX FUEL, REDLITHIUM and related names are trademarks of their owners. ToolLog isn't affiliated with them.
+RYOBI, ONE+, Milwaukee, M18, M12, MX FUEL, REDLITHIUM and related names are trademarks of their owners. Tool Crizib isn't affiliated with them.
 
 Protect ya data.

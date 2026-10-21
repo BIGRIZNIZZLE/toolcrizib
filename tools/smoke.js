@@ -1,5 +1,5 @@
 const puppeteer = require('/workspace/autolog/tools/node_modules/puppeteer-core');
-const BASE = process.env.BASE || 'http://127.0.0.1:8813/toollog/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8813/toolcrizib/';
 (async () => {
   const b = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
   const p = await b.newPage(); await p.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });

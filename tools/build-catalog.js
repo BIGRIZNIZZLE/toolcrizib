@@ -55,7 +55,7 @@ for (const x of list) { const k = `${x.b} ${(T.PLATFORMS.find(p => p.id === x.p)
 const now = new Date();
 const cat = { generated: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), generatedISO: now.toISOString(),
   sources: { RYOBI: 'https://www.ryobitools.com/sitemap.xml → product pages (JSON-LD + page data)', Milwaukee: 'https://www.milwaukeetool.com/sitemap.xml → product pages (JSON-LD)' },
-  note: 'Model numbers and names as published on the manufacturer pages linked in each entry (u). Battery Ah from the product name or spec table. Tool type is ToolLog’s own grouping.',
+  note: 'Model numbers and names as published on the manufacturer pages linked in each entry (u). Battery Ah from the product name or spec table. Tool type is Tool Crizib’s own grouping.',
   counts: stats, items: list };
 fs.writeFileSync(out, JSON.stringify(cat));
 console.log(list.length, 'products ->', out, (fs.statSync(out).size / 1024).toFixed(0) + ' KB');

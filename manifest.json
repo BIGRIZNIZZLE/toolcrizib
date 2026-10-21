@@ -1,6 +1,6 @@
 {
-  "name": "ToolLog: Power Tools & Batteries",
-  "short_name": "ToolLog",
+  "name": "Tool Crizib",
+  "short_name": "Tool Crizib",
   "description": "Inventory every power tool, battery and charger: serials, price paid, warranty, battery platforms and an insurance list. Works offline.",
   "id": "./",
   "start_url": "./index.html",

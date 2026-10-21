@@ -1,6 +1,6 @@
-/* ToolLog · RIZNOSS Chamber 02 — power tool & battery inventory. Data lives in localStorage (records) + IndexedDB (photos). */
+/* Tool Crizib · RIZNOSS Chamber 02 — power tool & battery inventory. Data lives in localStorage (records) + IndexedDB (photos). */
 'use strict';
-const KEY = 'toollog:data:v1', BAK = 'toollog:backup:v1', APP_VERSION = '1';
+const KEY = 'toollog:data:v1', BAK = 'toollog:backup:v1', APP_VERSION = '2';
 const TAX = window.TL_TAX;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -662,7 +662,7 @@ const csvCell = v => { const s = String(v ?? ''); return /[",\n\r]/.test(s) || /
 function exportCSV(all) {
   const list = db.items.filter(x => all || active(x));
   const csv = [CSV_COLS.map(c => c[0]).join(','), ...list.map(x => CSV_COLS.map(c => csvCell(c[1](x))).join(','))].join('\r\n');
-  download(`toollog-insurance-${todayISO()}.csv`, '\ufeff' + csv, 'text/csv'); toast(`CSV with ${plural(list.length, 'item')} downloaded`);
+  download(`tool-crizib-insurance-${todayISO()}.csv`, '\ufeff' + csv, 'text/csv'); toast(`CSV with ${plural(list.length, 'item')} downloaded`);
 }
 function viewExport() {
   const act = db.items.filter(active), total = totalValue(act);
@@ -683,24 +683,24 @@ function viewPrint() {
   const act = db.items.filter(active).sort((a, b) => String(a.brand).localeCompare(String(b.brand)) || String(a.name).localeCompare(String(b.name)));
   const total = totalValue(act);
   return `<div class="print-bar no-print"><a href="#/export" class="back">${I.back} Back</a><button class="btn primary small" data-act="print">${I.print} Print / Save PDF</button></div>
-    <article class="print-sheet"><header class="ps-head"><img src="img/riznoss-crest-solid.webp" alt="" width="34" height="39"><div><h1>Tool &amp; equipment inventory</h1><p>${db.settings.owner ? esc(db.settings.owner) + ' · ' : ''}Generated ${esc(fdate(todayISO()))} with ToolLog</p></div>
+    <article class="print-sheet"><header class="ps-head"><img src="img/riznoss-crest-solid.webp" alt="" width="34" height="39"><div><h1>Tool &amp; equipment inventory</h1><p>${db.settings.owner ? esc(db.settings.owner) + ' · ' : ''}Generated ${esc(fdate(todayISO()))} with Tool Crizib</p></div>
       <div class="ps-tot"><span>${plural(act.length, 'item')}</span><b>${money(total)}</b></div></header>
       <table class="ps-t"><thead><tr><th>Photo</th><th>Item</th><th>Serial #</th><th>Purchased</th><th class="r">Paid</th></tr></thead><tbody>
       ${act.map(x => { const k = x.kitId && kitById(x.kitId); return `<tr><td class="ps-ph">${x.photos && x.photos[0] ? `<img data-ph="${esc(x.photos[0])}" alt="">` : ''}</td><td><b>${esc(itemTitle(x))}</b><small>${esc([x.brand, platLabel(x.platform, x), x.model && 'Model ' + x.model].filter(Boolean).join(' · '))}${k ? `<br>Part of ${esc(k.name)}${k.model ? ' (' + esc(k.model) + ')' : ''}` : ''}${x.condition ? ` · ${esc(x.condition)}` : ''}${x.location ? ` · ${esc(x.location)}` : ''}</small></td><td class="mono">${esc(x.serial || '—')}</td><td>${esc(x.purchased ? fdate(x.purchased) : '—')}<small>${esc(x.store || '')}</small></td><td class="r">${esc(money(itemCost(x)))}${x.free ? '<small>free</small>' : k ? '<small>kit share</small>' : ''}</td></tr>`; }).join('')}
       </tbody><tfoot><tr><td colspan="4">Total price paid</td><td class="r">${esc(money(total))}</td></tr></tfoot></table>
-      <footer class="ps-foot">RIZNOSS · Chamber 02 · ToolLog. Values are what the owner paid, not replacement cost.</footer></article>`;
+      <footer class="ps-foot">RIZNOSS · Chamber 02 · Tool Crizib. Values are what the owner paid, not replacement cost.</footer></article>`;
 }
 
 /* ---------- backup ---------- */
 async function exportJSON(withPhotos) {
-  const out = { app: 'ToolLog', exported: new Date().toISOString(), ...db };
+  const out = { app: 'Tool Crizib', exported: new Date().toISOString(), ...db };
   if (withPhotos) { toast('Packing photos…'); const ids = new Set(db.items.flatMap(x => [...(x.photos || []), x.receipt]).concat(db.kits.map(k => k.receipt)).filter(Boolean)); out.photoData = {}; for (const r of await Photos.all()) if (ids.has(r.id)) out.photoData[r.id] = { full: await blobToData(r.full), thumb: await blobToData(r.thumb) }; }
-  download(`toollog-backup-${todayISO()}.json`, JSON.stringify(out)); toast('Backup downloaded');
+  download(`tool-crizib-backup-${todayISO()}.json`, JSON.stringify(out)); toast('Backup downloaded');
 }
 async function importJSON(file) {
   try {
     const j = JSON.parse(await file.text());
-    if (!j || (j.app && j.app !== 'ToolLog') || !Array.isArray(j.items)) throw new Error('not a ToolLog backup');
+    if (!j || (j.app && j.app !== 'ToolLog' && j.app !== 'Tool Crizib') || !Array.isArray(j.items)) throw new Error('not a Tool Crizib backup');
     const inc = normalize(j);
     const ok = await ask({ title: 'Import this backup?', msg: `${plural(inc.items.length, 'item')} and ${plural(inc.kits.length, 'kit')}. Items already here are kept; the newer copy of each one wins. A copy of your current data is saved first.`, buttons: [{ label: 'Import', value: true, cls: 'primary' }, { label: 'Cancel', value: false }] });
     if (!ok) return;
@@ -708,7 +708,7 @@ async function importJSON(file) {
     for (const key of ['items', 'kits', 'custom']) for (const r of inc[key]) { const i = db[key].findIndex(x => x.id === r.id); if (i < 0) db[key].push(r); else if (String(r.updated || '') > String(db[key][i].updated || '')) db[key][i] = r; }
     let n = 0; for (const [id, p] of Object.entries(j.photoData || {})) { try { await Photos.putRaw({ id, full: await dataToBlob(p.full), thumb: await dataToBlob(p.thumb), t: Date.now() }); n++; } catch (e) { console.warn(e); } }
     save(); render(); toast(`Imported${n ? ` with ${plural(n, 'photo')}` : ''}`);
-  } catch (e) { console.warn(e); toast('That file isn’t a ToolLog backup'); }
+  } catch (e) { console.warn(e); toast('That file isn’t a Tool Crizib backup'); }
 }
 
 /* ---------- reminders: calendar + notifications ---------- */
@@ -716,45 +716,45 @@ function icsFor(list) {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const ev = list.map(it => { const end = warrantyEnd(it); if (!end) return ''; const d = end.replace(/-/g, ''); const nx = (() => { const x = parseD(end); x.setDate(x.getDate() + 1); return iso(x).replace(/-/g, ''); })();
     return ['BEGIN:VEVENT', `UID:toollog-w-${it.id}@riznoss`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${nx}`, `SUMMARY:Warranty ends: ${itemTitle(it).replace(/[,;\\]/g, ' ')}`, `DESCRIPTION:${[it.brand, it.model, it.serial && 'S/N ' + it.serial].filter(Boolean).join(' ').replace(/[,;\\]/g, ' ')}`, 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Warranty ends in 30 days', 'TRIGGER:-P30D', 'END:VALARM', 'END:VEVENT'].join('\r\n'); }).filter(Boolean);
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//RIZNOSS//ToolLog//EN', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//RIZNOSS//Tool Crizib//EN', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
 }
 function notifyDue() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   let sent = {}; try { sent = JSON.parse(localStorage.getItem('toollog:notified') || '{}'); } catch (e) { /* ignore */ }
   const due = reminders().filter(r => !sent[r.key] || Date.now() - sent[r.key] > 7 * 864e5).slice(0, 3);
-  due.forEach(r => { try { new Notification('ToolLog: ' + itemTitle(r.it), { body: r.t, icon: 'icons/icon-192.png', tag: r.key }); sent[r.key] = Date.now(); } catch (e) { /* iOS needs the SW route */ navigator.serviceWorker?.ready.then(reg => reg.showNotification('ToolLog: ' + itemTitle(r.it), { body: r.t, icon: 'icons/icon-192.png', tag: r.key })).catch(() => {}); sent[r.key] = Date.now(); } });
+  due.forEach(r => { try { new Notification('Tool Crizib: ' + itemTitle(r.it), { body: r.t, icon: 'icons/icon-192.png', tag: r.key }); sent[r.key] = Date.now(); } catch (e) { /* iOS needs the SW route */ navigator.serviceWorker?.ready.then(reg => reg.showNotification('Tool Crizib: ' + itemTitle(r.it), { body: r.t, icon: 'icons/icon-192.png', tag: r.key })).catch(() => {}); sent[r.key] = Date.now(); } });
   try { localStorage.setItem('toollog:notified', JSON.stringify(sent)); } catch (e) { /* ignore */ }
 }
 function updateBell() { const n = reminders().length, b = $('#bellCount'); if (b) { b.hidden = !n; b.textContent = n > 9 ? '9+' : n; } }
 
 /* ---------- settings / about ---------- */
-const rzFoot = () => `<a href="#/about" class="rz-foot"><img src="img/riznoss-crest-solid.webp" alt="" width="26" height="30" loading="lazy" decoding="async"><b>RIZNOSS · Chamber 02</b><span>ToolLog v${APP_VERSION} · works offline · your data stays yours</span><i>Protect ya data.</i></a>`;
+const rzFoot = () => `<a href="#/about" class="rz-foot"><img src="img/riznoss-crest-solid.webp" alt="" width="26" height="30" loading="lazy" decoding="async"><b>RIZNOSS · Chamber 02</b><span>Tool Crizib v${APP_VERSION} · works offline · your data stays yours</span><i>Protect ya data.</i></a>`;
 function viewMore() {
   const th = db.settings.theme || 'auto', perm = 'Notification' in window ? Notification.permission : 'unsupported';
   return `<div class="page-title"><h2>Settings</h2></div>
     <div id="syncCard">${window.ToolLogSync ? window.ToolLogSync.cardHTML() : ''}</div>
     <section class="card"><h3>Appearance</h3><div class="seg" role="radiogroup" aria-label="Theme">${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<label><input type="radio" name="theme" value="${k}" ${th === k ? 'checked' : ''} data-theme-pick><span>${l}</span></label>`).join('')}</div>
       <div class="field" style="margin-top:12px"><span class="lbl">Inventory groups by default</span><div class="seg">${GROUPINGS.map(([k, l]) => `<label><input type="radio" name="defg" value="${k}" ${(db.settings.group || 'brand') === k ? 'checked' : ''} data-defg><span>${l}</span></label>`).join('')}</div></div></section>
-    <section class="card"><h3>${I.bell} Reminders</h3><p class="muted">Warranty end dates and tools loaned out 30+ days show on the dashboard. ToolLog can also notify you when you open it, or add warranty dates to your calendar.</p>
+    <section class="card"><h3>${I.bell} Reminders</h3><p class="muted">Warranty end dates and tools loaned out 30+ days show on the dashboard. Tool Crizib can also notify you when you open it, or add warranty dates to your calendar.</p>
       <div class="btn-row">${perm === 'default' ? `<button class="btn small primary" data-act="notif">Turn on notifications</button>` : perm === 'granted' ? '<span class="tag good">Notifications on</span>' : perm === 'denied' ? '<span class="tag">Notifications blocked in browser settings</span>' : ''}<button class="btn small" data-act="icsAll">${I.cal} All warranty dates (.ics)</button></div></section>
     <section class="card"><h3>Data</h3><div class="btn-row"><button class="btn small" data-act="export">${I.download} Backup</button><button class="btn small" data-act="import">${I.upload} Import</button><a class="btn small" href="#/export">${I.shield} Insurance export</a>${db.items.length ? '' : '<button class="btn small" data-act="sample">Load sample data</button>'}</div>
       <div class="setting danger"><b>Danger zone</b><div><button class="btn small ghost-danger" data-act="eraseAll" ${db.items.length || db.kits.length ? '' : 'disabled'}>${I.trash} Erase all data on this device</button></div></div></section>
-    <section class="card"><a class="srow" href="#/about"><span class="sicon rz">${'<img src="img/riznoss-crest-solid.webp" alt="" width="22" height="25">'}</span><div class="sbody"><b>About ToolLog</b><small>RIZNOSS Chamber 02 · share the app</small></div>${I.right}</a></section>
+    <section class="card"><a class="srow" href="#/about"><span class="sicon rz">${'<img src="img/riznoss-crest-solid.webp" alt="" width="22" height="25">'}</span><div class="sbody"><b>About Tool Crizib</b><small>RIZNOSS Chamber 02 · share the app</small></div>${I.right}</a></section>
     ${rzFoot()}`;
 }
 function viewAbout() {
   const synced = !!(window.ToolLogSync && window.ToolLogSync.status().signedIn);
   return `<a href="#/more" class="back">${I.back} Settings</a>
     <section class="card rz-about"><img src="img/riznoss-lockup.webp" alt="RIZNOSS" width="220" height="213" decoding="async">
-      <p class="rz-ch">RIZNOSS presents · Chamber 02</p><h2>ToolLog</h2><p class="rz-alias">The Shaolin Arsenal</p>
+      <p class="rz-ch">RIZNOSS presents · Chamber 02</p><h2>Tool Crizib</h2><p class="rz-alias">The Shaolin Arsenal</p>
       <p class="rz-copy">Every tool, battery and charger you own: serials, price paid, warranty, platform and who borrowed it. On your own device, no ads, no tracking. Sync only happens if you sign in.</p>
       <div class="rz-meta"><div><span>Version</span><b>v${APP_VERSION}</b></div><div><span>Your data</span><b>${synced ? 'This device + your account' : 'This device only'}</b></div><div><span>Items</span><b>${fmt(db.items.length)}</b></div><div><span>Catalog</span><b>${CAT ? fmt(CAT.items.length) + ' products' : 'RYOBI + Milwaukee'}</b></div></div>
       <div class="rz-sign">Protect ya data.</div></section>
-    <section class="card"><h3>Share ToolLog</h3><p class="muted" style="margin:6px 0 10px">Send the invite page. It walks people through opening it in Safari, adding it to their Home Screen and signing up.</p><div class="btn-row"><button class="btn small primary" data-act="shareApp">${I.share} Share ToolLog</button></div><p class="muted" style="font-size:.8rem;margin:8px 0 0;word-break:break-all">${JOIN_URL}</p></section>
-    <section class="card"><h3>Catalog sources</h3><p class="muted" style="margin:6px 0 0">Model numbers come from the makers’ public product pages (ryobitools.com, milwaukeetool.com). Product names are trademarks of their owners; ToolLog isn’t affiliated with RYOBI, Techtronic Industries or Milwaukee Tool.</p></section>
+    <section class="card"><h3>Share Tool Crizib</h3><p class="muted" style="margin:6px 0 10px">Send the invite page. It walks people through opening it in Safari, adding it to their Home Screen and signing up.</p><div class="btn-row"><button class="btn small primary" data-act="shareApp">${I.share} Share Tool Crizib</button></div><p class="muted" style="font-size:.8rem;margin:8px 0 0;word-break:break-all">${JOIN_URL}</p></section>
+    <section class="card"><h3>Catalog sources</h3><p class="muted" style="margin:6px 0 0">Model numbers come from the makers’ public product pages (ryobitools.com, milwaukeetool.com). Product names are trademarks of their owners; Tool Crizib isn’t affiliated with RYOBI, Techtronic Industries or Milwaukee Tool.</p></section>
     <section class="card"><h3>Also from RIZNOSS</h3><a class="srow" href="../autolog/"><span class="sicon">${svg('<path d="M5 16V11l2-5h10l2 5v5"/><path d="M3 16h18v3H3z"/>')}</span><div class="sbody"><b>AutoLog · Chamber 01</b><small>Fuel, maintenance and cost of ownership</small></div>${I.right}</a></section>`;
 }
-const JOIN_URL = 'https://bigriznizzle.github.io/toollog/join/';
+const JOIN_URL = 'https://bigriznizzle.github.io/toolcrizib/join/';
 (function () { try { if (/[?&]join(=[^&]*)?(&|$)/.test(location.search)) { sessionStorage.setItem('toollog:join', '1'); const q = location.search.slice(1).split('&').filter(x => x && !/^join(=|$)/.test(x)).join('&'); history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } } catch (e) { /* ignore */ } })();
 const isStandalone = () => navigator.standalone === true || !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -762,10 +762,10 @@ function joinCoach() {
   let on = false; try { on = sessionStorage.getItem('toollog:join') === '1'; } catch (e) { /* ignore */ }
   if (!on || isStandalone()) return '';
   const how = isIOS() ? 'Tap <b>Share</b> (the square with the arrow; tap <b>•••</b> first if you don’t see it), then <b>Add to Home Screen</b>, then <b>Add</b>.' : /Android/i.test(navigator.userAgent) ? 'Tap Chrome’s <b>⋮</b> menu, then <b>Install app</b> (or <b>Add to Home screen</b>).' : 'Use your browser’s <b>Install</b> option, or just use it here.';
-  return `<section class="card join-coach"><div class="card-head"><h3>📲 Almost there</h3><button type="button" class="btn small" data-act="joinDone" aria-label="Dismiss">✕</button></div><p>${how}</p><p class="muted" style="margin:6px 0 0">Then open ToolLog from your Home Screen. To create an account, go to <b>Settings</b> → <b>Account &amp; sync</b>.</p></section>`;
+  return `<section class="card join-coach"><div class="card-head"><h3>📲 Almost there</h3><button type="button" class="btn small" data-act="joinDone" aria-label="Dismiss">✕</button></div><p>${how}</p><p class="muted" style="margin:6px 0 0">Then open Tool Crizib from your Home Screen. To create an account, go to <b>Settings</b> → <b>Account &amp; sync</b>.</p></section>`;
 }
 async function shareApp() {
-  const data = { title: 'ToolLog · RIZNOSS Chamber 02', text: 'ToolLog keeps every power tool and battery you own: serials, warranty, platforms, insurance list. Free, private, works offline.', url: JOIN_URL };
+  const data = { title: 'Tool Crizib · RIZNOSS Chamber 02', text: 'Tool Crizib keeps every power tool and battery you own: serials, warranty, platforms, insurance list. Free, private, works offline.', url: JOIN_URL };
   if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
   try { await navigator.clipboard.writeText(JOIN_URL); toast('Invite link copied'); } catch (e) { prompt('Copy this link:', JOIN_URL); }
 }
@@ -773,7 +773,7 @@ function showSplash() {
   try { if (sessionStorage.getItem('toollog:splash') || /[?&]nosplash\b/.test(location.search)) return; sessionStorage.setItem('toollog:splash', '1'); } catch (e) { return; }
   const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const el = document.createElement('div'); el.className = 'rz-splash'; el.setAttribute('role', 'presentation');
-  el.innerHTML = `<div class="rz-in"><img src="img/riznoss-lockup.webp" alt="RIZNOSS" width="236" height="228" decoding="async"><p class="rz-presents"><b>RIZNOSS</b> presents · Chamber 02</p><p class="rz-app">ToolLog</p><p class="rz-alias2">The Shaolin Arsenal</p></div><div class="rz-skip">Tap to skip</div>`;
+  el.innerHTML = `<div class="rz-in"><img src="img/riznoss-lockup.webp" alt="RIZNOSS" width="236" height="228" decoding="async"><p class="rz-presents"><b>RIZNOSS</b> presents · Chamber 02</p><p class="rz-app">Tool Crizib</p><p class="rz-alias2">The Shaolin Arsenal</p></div><div class="rz-skip">Tap to skip</div>`;
   let done = false; const close = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => el.remove(), reduce ? 0 : 380); document.removeEventListener('keydown', close, true); };
   el.addEventListener('pointerdown', close); document.addEventListener('keydown', close, true);
   document.body.appendChild(el); setTimeout(close, reduce ? 900 : 1600);
@@ -856,7 +856,7 @@ const ACTIONS = {
     const who = prompt('Who are you lending it to?'); if (!who || !who.trim()) return; it.loanedTo = who.trim(); it.loanedOn = todayISO(); it.updated = new Date().toISOString(); save(); render(); toast(`Loaned to ${it.loanedTo}`); },
   addPhoto: () => { const it = itemById(route().arg); if (!it) return; const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*'; f.multiple = true; f.onchange = async () => { for (const fl of f.files) { try { it.photos = [...(it.photos || []), await Photos.add(fl)]; } catch (e) { toast('Couldn’t read that photo'); } } it.updated = new Date().toISOString(); save(); render(); }; f.click(); },
   ics: b => { const it = itemById(b.dataset.id); if (it) download(`warranty-${norm(it.model || it.name).replace(/\s/g, '-')}.ics`, icsFor([it]), 'text/calendar'); },
-  icsAll: () => { const l = db.items.filter(x => active(x) && warrantyEnd(x) && warrantyEnd(x) >= todayISO()); if (!l.length) { toast('No upcoming warranty dates yet'); return; } download(`toollog-warranties-${todayISO()}.ics`, icsFor(l), 'text/calendar'); toast(`${plural(l.length, 'warranty date')} exported`); },
+  icsAll: () => { const l = db.items.filter(x => active(x) && warrantyEnd(x) && warrantyEnd(x) >= todayISO()); if (!l.length) { toast('No upcoming warranty dates yet'); return; } download(`tool-crizib-warranties-${todayISO()}.ics`, icsFor(l), 'text/calendar'); toast(`${plural(l.length, 'warranty date')} exported`); },
   notif: async () => { try { const p = await Notification.requestPermission(); if (p === 'granted') { toast('Notifications on'); notifyDue(); } render(); } catch (e) { toast('This browser can’t show notifications'); } },
   csv: () => exportCSV(false), csvAll: () => exportCSV(true), export: () => exportJSON(true), exportLite: () => exportJSON(false), import: () => $('#importFile').click(),
   print: () => window.print(), clearF: () => { INV.f = ''; history.replaceState(null, '', '#/tools'); render(); }, toggleRetired: () => { INV.retired = !INV.retired; render(); },

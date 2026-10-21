@@ -1,6 +1,6 @@
 // Service worker: installs, app shell + catalog work offline, caches are toollog-only (AutoLog's untouched on the same origin)
 const puppeteer = require('/workspace/autolog/tools/node_modules/puppeteer-core');
-const BASE = process.env.BASE || 'http://127.0.0.1:8813/toollog/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8813/toolcrizib/';
 const sleep = ms => new Promise(r => setTimeout(r, ms)); const r = {};
 (async () => {
   const b = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
@@ -14,7 +14,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms)); const r = {};
   r.scope = await p.evaluate(async () => (await navigator.serviceWorker.getRegistration()).scope);
   await p.setOfflineMode(true);
   await p.goto(BASE + '?nosplash#/dash', { waitUntil: 'load' }); await sleep(600);
-  r.offlineShell = await p.evaluate(() => !!document.querySelector('main') && document.body.innerText.includes('ToolLog'));
+  r.offlineShell = await p.evaluate(() => !!document.querySelector('main') && document.body.innerText.includes('Tool Crizib'));
   r.offlineCatalog = await p.evaluate(async () => { try { const c = await window.ToolLogApp.loadCatalog(); return (c.items || c).length; } catch (e) { return 'ERR ' + e.message; } });
   await p.setOfflineMode(false);
   r.caches = await p.evaluate(() => caches.keys());

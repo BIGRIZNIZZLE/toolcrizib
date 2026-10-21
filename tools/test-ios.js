@@ -3,7 +3,7 @@
 // window can always return to the top, custom dropdown lists scroll inside themselves.
 let pw; try { pw = require('playwright'); } catch (e) { pw = require('/workspace/pw/node_modules/playwright'); }
 const { webkit, devices } = pw;
-const BASE = process.env.BASE || 'http://127.0.0.1:8813/toollog/index.html';
+const BASE = process.env.BASE || 'http://127.0.0.1:8813/toolcrizib/index.html';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const b = await webkit.launch(); const c = await b.newContext({ ...devices['iPhone 13'] }); const p = await c.newPage();
