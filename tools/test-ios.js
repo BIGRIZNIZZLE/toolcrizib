@@ -55,6 +55,18 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   res.viewportMeta = await p.evaluate(() => { const m = document.querySelector('meta[name=viewport]').content; return /width=device-width/.test(m) && !/user-scalable=no|maximum-scale=1(\D|$)/.test(m) ? 'PASS' : 'FAIL ' + m; });
   res.noVhOnScrollers = await p.evaluate(() => { const bad = []; for (const sh of document.styleSheets) { let rules; try { rules = sh.cssRules; } catch (e) { continue; } const walk = rs => { for (const r of rs) { if (r.cssRules) walk(r.cssRules); if (r.style && /\d(vh)\b/.test(r.cssText) && !/dvh|svh|lvh/.test(r.cssText)) bad.push(r.selectorText); } }; walk(rules); } return bad.length ? 'FAIL ' + bad.join(', ') : 'PASS'; });
   for (const k of Object.keys(bad)) res[k] = bad[k].length ? 'FAIL ' + JSON.stringify([...new Set(bad[k])].slice(0, 12)) : 'PASS';
+  // comic icons + a photo thumbnail render in Safari/WebKit
+  await go('#/tools?g=brand'); await sleep(600);
+  const ic = await p.evaluate(() => { const ims = [...document.querySelectorAll('main .cicon img')].slice(0, 5); return { n: ims.length, ok: ims.every(i => i.complete && i.naturalWidth > 0), badge: !!document.querySelector('main .v-badge'), tag: getComputedStyle(document.querySelector('main .br-tag')).backgroundImage.includes('gradient') }; });
+  res.comicIcons = ic.n >= 5 && ic.ok && ic.badge && ic.tag ? 'PASS' : 'FAIL ' + JSON.stringify(ic);
+  // photos need a persistent profile: WebKit's ephemeral contexts (like Private Browsing) can't keep Blobs in IndexedDB
+  const pc = await webkit.launchPersistentContext('/tmp/tc-wk-' + Date.now(), { ...devices['iPhone 13'] }); const pp = pc.pages()[0] || await pc.newPage();
+  pp.on('pageerror', e => errors.push(e.message)); pp.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await pp.goto(BASE + '?nosplash'); await pp.waitForLoadState('networkidle'); await pp.evaluate(() => document.querySelector('[data-act="sample"]').click()); await sleep(1500);
+  const ph = await pp.evaluate(async () => { const A = window.ToolLogApp, d = A.getDb(), it = d.items.find(i => i.kind === 'tool'); const c = document.createElement('canvas'); c.width = 640; c.height = 480; const g = c.getContext('2d'); g.fillStyle = '#2f63c9'; g.fillRect(0, 0, 640, 480); g.fillStyle = '#fff'; g.fillRect(200, 140, 240, 200);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8)); it.photos = [await A.Photos.add(new File([blob], 'x.jpg', { type: 'image/jpeg' }))]; A.render(); location.hash = '#/item/' + it.id; await new Promise(r => setTimeout(r, 900)); const im = document.querySelector('.ph.big img'); return { src: (im && im.src || '').slice(0, 5), w: im && im.naturalWidth }; });
+  await pc.close();
+  res.photoThumb = ph.src === 'blob:' && ph.w > 0 ? 'PASS' : 'FAIL ' + JSON.stringify(ph);
   res.errors = errors.length ? 'FAIL ' + JSON.stringify(errors.slice(0, 5)) : 'PASS';
   console.log(JSON.stringify(res, null, 1)); const f = Object.values(res).filter(x => x !== 'PASS').length; console.log(f ? f + ' FAIL' : 'ALL PASS');
   await b.close(); process.exit(f ? 1 : 0);

@@ -1,6 +1,6 @@
 /* Tool Crizib · RIZNOSS Chamber 02 — power tool & battery inventory. Data lives in localStorage (records) + IndexedDB (photos). */
 'use strict';
-const KEY = 'toollog:data:v1', BAK = 'toollog:backup:v1', APP_VERSION = '2';
+const KEY = 'toollog:data:v1', BAK = 'toollog:backup:v1', APP_VERSION = '3';
 const TAX = window.TL_TAX;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -41,6 +41,33 @@ const I = {
   copy: svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'), bell: svg('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'),
 };
 const KIND_IC = { tool: I.drill, battery: I.battery, charger: I.plug, other: I.box };
+/* ---------- comic icon set: generic tools in RIZNOSS blue; brand is an HTML badge, never baked into the art ---------- */
+const CI_LABEL = { drill: 'drill / driver', hammerdrill: 'hammer drill', impactdriver: 'impact driver', impactwrench: 'impact wrench', circsaw: 'circular saw', recip: 'reciprocating saw', jigsaw: 'jigsaw', miter: 'miter saw', tablesaw: 'table saw', multitool: 'oscillating multi-tool', grinder: 'grinder', sander: 'sander', router: 'router', rotary: 'rotary tool', nailer: 'nailer / stapler', heatgun: 'heat gun', gluegun: 'glue gun', inflator: 'inflator', vacuum: 'vacuum', blower: 'blower', trimmer: 'string trimmer', hedge: 'hedge trimmer', chainsaw: 'chainsaw', mower: 'mower', pressure: 'pressure washer', light: 'light', radio: 'radio / speaker', fan: 'fan', battery: 'battery', charger: 'charger', kit: 'kit / bundle', other: 'other tool' };
+const CI_TYPE = { 'Drill / driver': 'drill', 'Right angle drill': 'drill', 'Hammer drill': 'hammerdrill', 'Rotary hammer': 'hammerdrill', 'Concrete / mixing': 'hammerdrill', 'Impact driver': 'impactdriver', 'Impact wrench': 'impactwrench', Ratchet: 'impactwrench', 'Torque wrench': 'impactwrench',
+  'Circular saw': 'circsaw', 'Metal / cut-off saw': 'circsaw', 'Reciprocating saw': 'recip', 'Jig saw': 'jigsaw', 'Scroll saw': 'jigsaw', 'Band saw': 'jigsaw', 'Miter saw': 'miter', 'Table saw': 'tablesaw', 'Oscillating multi-tool': 'multitool', 'Grinder / cut-off': 'grinder', 'Sander / polisher': 'sander',
+  'Router / planer': 'router', 'Nailer / stapler': 'nailer', 'Inflator / compressor': 'inflator', 'Vacuum / dust': 'vacuum', Blower: 'blower', 'Snow blower': 'blower', 'String trimmer / edger': 'trimmer', 'Hedge trimmer': 'hedge', 'Chainsaw / pruner': 'chainsaw', Mower: 'mower', 'Tiller / auger': 'mower',
+  'Pressure washer / scrubber': 'pressure', 'Sprayer / spreader': 'pressure', Light: 'light', 'Comfort / audio / heated': 'radio', Battery: 'battery', 'Charger / power': 'charger', 'Combo kit': 'kit', 'Battery & charger kit': 'kit' };
+const CI_KEYS = Object.keys(CI_LABEL);
+function iconKey(x) {
+  if (x._k) return x._k;
+  const kind = x.kind || x.k, type = x.type || x.t || '', n = String(x.name || x.n || '').toLowerCase();
+  if (x.isKit || x.kit === true || CI_TYPE[type] === 'kit') return 'kit';
+  if (kind === 'battery') return 'battery'; if (kind === 'charger') return 'charger';
+  if (/hedge/.test(n)) return 'hedge'; if (/heat gun/.test(n)) return 'heatgun'; if (/glue/.test(n)) return 'gluegun'; if (/rotary tool/.test(n)) return 'rotary';
+  if (/\bfan\b/.test(n)) return 'fan'; if (/radio|speaker/.test(n)) return 'radio';
+  return CI_TYPE[type] || 'other';
+}
+const brandKey = b => { const n = String(b || '').toLowerCase(); return n === 'ryobi' ? 'ryobi' : n === 'milwaukee' ? 'milwaukee' : 'other'; };
+// small comic voltage/Ah badge, live HTML (never part of the image)
+function batBadge(x) {
+  const v = num(x.voltage ?? x.v) ?? (PL[x.platform || x.p] && PL[x.platform || x.p].v), ah = num(x.ah);
+  const t = [v ? fmt(v, v % 1 ? 1 : 0) + 'V' : '', ah ? fmt(ah, ah % 1 ? 1 : 0) + 'Ah' : ''].filter(Boolean);
+  return t.length ? `<b class="v-badge" aria-hidden="true">${t.map(esc).join('<i>·</i>')}</b>` : '';
+}
+function comicIcon(x, cls = '') {
+  const k = iconKey(x), b = x.brand || x.b || '', lbl = 'Comic icon: ' + CI_LABEL[k] + (b ? ', ' + b : '');
+  return `<span class="cicon ${cls} br-${brandKey(b)}"><img src="icons/comic/${k}.webp" alt="${esc(lbl)}" width="56" height="56" loading="lazy" decoding="async"><i class="br-tag" aria-hidden="true"></i>${k === 'battery' ? batBadge(x) : ''}</span>`;
+}
 
 /* ---------- data ---------- */
 const KINDS = [['tool', 'Tool'], ['battery', 'Battery'], ['charger', 'Charger'], ['other', 'Other']];
@@ -127,7 +154,7 @@ const itemSub = it => [it.brand, platNone(it.platform) ? '' : platLabel(it.platf
 
 /* ---------- photos (IndexedDB; compressed JPEG + thumbnail) ---------- */
 const Photos = (() => {
-  let dbp = null; const urls = new Map();
+  let dbp = null; const urls = new Map(); // id:which -> object URL (revoked by sweep/del)
   const open = () => dbp || (dbp = new Promise((res, rej) => { if (!('indexedDB' in window)) return rej(new Error('no idb')); const r = indexedDB.open('toollog-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p', { keyPath: 'id' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
   const tx = async (mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction('p', mode), s = t.objectStore('p'); const out = fn(s); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error); }); };
   async function shrink(file, max, q) {
@@ -140,13 +167,20 @@ const Photos = (() => {
     async add(file) { const id = 'ph_' + uid(); const [full, thumb] = await Promise.all([shrink(file, 1600, 0.74), shrink(file, 360, 0.7)]); await tx('readwrite', s => s.put({ id, full, thumb, t: Date.now() })); return id; },
     async get(id) { try { return await tx('readonly', s => s.get(id)); } catch (e) { return null; } },
     async url(id, which = 'thumb') { const k = id + ':' + which; if (urls.has(k)) return urls.get(k); const r = await this.get(id); if (!r || !r[which]) return null; const u = URL.createObjectURL(r[which]); urls.set(k, u); return u; },
-    async del(id) { try { await tx('readwrite', s => s.delete(id)); } catch (e) { /* ignore */ } },
+    async del(id) { ['thumb', 'full'].forEach(w => { const u = urls.get(id + ':' + w); if (u) { URL.revokeObjectURL(u); urls.delete(id + ':' + w); } }); try { await tx('readwrite', s => s.delete(id)); } catch (e) { /* ignore */ } },
+    // free object URLs no longer on screen: big photos always, thumbnails once the cache grows past 200
+    sweep() { const live = new Set($$('img[src^="blob:"]').map(i => i.getAttribute('src'))); let thumbs = [...urls.keys()].filter(k => k.endsWith(':thumb')).length;
+      for (const [k, u] of [...urls]) { if (live.has(u)) continue; const full = k.endsWith(':full'); if (full || thumbs > 200) { URL.revokeObjectURL(u); urls.delete(k); if (!full) thumbs--; } } },
+    get urlCount() { return urls.size; },
     async all() { try { const d = await open(); return await new Promise((res, rej) => { const r = d.transaction('p').objectStore('p').getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); } catch (e) { return []; } },
     async putRaw(rec) { await tx('readwrite', s => s.put(rec)); },
   };
 })();
 // fill every <img data-ph="id"> on screen
-function paintPhotos(root = document) { $$('img[data-ph]', root).forEach(async im => { if (im.dataset.done) return; im.dataset.done = 1; const u = await Photos.url(im.dataset.ph, im.dataset.full ? 'full' : 'thumb'); if (u) im.src = u; else im.closest('.ph')?.classList.add('missing'); }); }
+async function loadPh(im) { const u = await Photos.url(im.dataset.ph, im.dataset.full ? 'full' : 'thumb'); if (u) im.src = u; else { const p = im.closest('.ph'); if (p) p.classList.add('missing'); } }
+// lazy: only rows near the viewport read IndexedDB; the print sheet and big photos load at once
+const phIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { phIO.unobserve(e.target); loadPh(e.target); } }), { rootMargin: '400px 0px' }) : null;
+function paintPhotos(root = document) { $$('img[data-ph]', root).forEach(im => { if (im.dataset.done) return; im.dataset.done = 1; if (phIO && !im.dataset.full && !im.closest('.ps-ph')) phIO.observe(im); else loadPh(im); }); }
 const blobToData = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
 const dataToBlob = async d => (await fetch(d)).blob();
 
@@ -422,7 +456,7 @@ function itemForm(existing, preset = {}) {
       (preset.includes || []).forEach((x, i) => { if (!form.elements['inc_' + i]?.checked) return; for (let q = 0; q < (x.qty || 1); q++) { const c = x.cat; db.items.push({ id: uid(), kind: c ? c.k || 'tool' : 'tool', brand: v.brand, platform: c ? c.p : pKey, name: c ? c.n : x.n, model: x.m, type: c ? c.t : '', line: c ? c.l || '' : '', voltage: c ? c.v ?? null : null, ah: c ? c.ah ?? null : null, batType: c ? c.bt || '' : '', alsoP: c && c.p2 ? c.p2 : undefined, kitId, purchased: v.purchased, store: v.store, warrantyMo: c && c.w ? c.w : v.warrantyMo, condition: v.condition, location: v.location, status: 'Active', photos: [], catId: c ? c.id : '', src: c ? c.u : '', created: rec.updated, updated: rec.updated, inService: c && c.k === 'battery' ? v.purchased : '' }); extra++; } });
       if (kitOnly) { const k = kitById(kitId); if (k && preset.catId) { k.catId = preset.catId; k.src = src || ''; } }
       toast(it ? 'Saved' : kitOnly ? `Added ${plural(extra, 'item')} in one kit` : extra ? `Added ${plural(extra + 1, 'item')} in one kit` : 'Added to your arsenal');
-      if (!it) setTimeout(() => { location.hash = kitOnly ? '#/kit/' + kitId : '#/item/' + rec.id; }, 0);
+      if (!it) { if (!kitOnly && !rec.photos.length) snapFor = rec.id; setTimeout(() => { location.hash = kitOnly ? '#/kit/' + kitId : '#/item/' + rec.id; }, 0); }
     },
     onDelete: it ? () => { (it.photos || []).concat(it.receipt || []).forEach(id => Photos.del(id)); db.items = db.items.filter(x => x !== it); } : null,
   });
@@ -487,7 +521,7 @@ function paintPicker(first) {
     ${plats.length ? `<div class="pk-lbl">Platform</div><div class="pk-row scroll">${plats.map(([id, l, n]) => chip('plat', id, l, n, PK.plat === id)).join('')}</div>` : ''}
     ${types.length > 1 ? `<div class="pk-lbl">Type</div><div class="pk-row scroll">${types.map(([t, n]) => chip('type', t, t, n, PK.type === t)).join('')}</div>` : ''}
     <label class="search pk-search">${I.search}<input type="search" id="pkq" value="${esc(PK.q)}" placeholder="Search name or model #" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search the catalog"></label>
-    <div class="pick-results" role="list">${shown.map(x => `<button type="button" class="prow" role="listitem" data-cat="${esc(x.id)}"><span class="sicon">${KIND_IC[x.k || 'tool']}</span><span class="pr-main"><b>${esc(x.n)}</b><small>${esc([x.m, PL[x.p] ? PL[x.p].short : x.p, x.ah ? x.ah + 'Ah' : '', x.bt].filter(Boolean).join(' · '))}</small></span>${x.mine ? '<span class="otag mine">my own</span>' : x.kit ? '<span class="otag">kit</span>' : ''}</button>`).join('')
+    <div class="pick-results" role="list">${shown.map(x => `<button type="button" class="prow" role="listitem" data-cat="${esc(x.id)}">${comicIcon(x)}<span class="pr-main"><b>${esc(x.n)}</b><small>${esc([x.m, PL[x.p] ? PL[x.p].short : x.p, x.ah ? x.ah + 'Ah' : '', x.bt].filter(Boolean).join(' · '))}</small></span>${x.mine ? '<span class="otag mine">my own</span>' : x.kit ? '<span class="otag">kit</span>' : ''}</button>`).join('')
       || `<div class="empty"><div class="big">Nothing matches</div><p>${PK.brand === 'Other' ? 'Other brands aren’t in the catalog. Tap <b>Add my own</b> and type it in; it’s saved for next time.' : 'Try fewer words, or tap <b>Add my own</b>.'}</p></div>`}
       ${rows.length > shown.length ? `<div class="combo-note">${fmt(rows.length - shown.length)} more. Keep typing or pick a type to narrow.</div>` : ''}</div>
     <p class="muted pk-foot">${PK.brand === 'Other' ? '' : `${fmt(pool.filter(x => !x.mine).length)} ${esc(PK.brand)} products from ${esc(PK.brand === 'RYOBI' ? 'ryobitools.com' : 'milwaukeetool.com')}, checked ${esc(CAT.generated || '')}.`}</p>`;
@@ -506,7 +540,8 @@ function chooseCat(id, preset = {}) {
 }
 
 /* ---------- views ---------- */
-const thumb = (it, cls = '') => it.photos && it.photos[0] ? `<span class="ph ${cls}"><img data-ph="${esc(it.photos[0])}" alt=""></span>` : `<span class="sicon k-${it.kind}">${KIND_IC[it.kind] || I.box}</span>`;
+// first local photo is the thumbnail; otherwise the comic icon for its category
+const thumb = (it, cls = '') => it.photos && it.photos[0] ? `<span class="ph ${cls} br-${brandKey(it.brand)}"><img data-ph="${esc(it.photos[0])}" alt="Photo of ${esc(itemTitle(it))}" width="56" height="56" decoding="async"><i class="br-tag" aria-hidden="true"></i>${it.kind === 'battery' ? batBadge(it) : ''}</span>` : comicIcon(it, cls);
 function itemRow(it) {
   const w = warrantyState(it), c = itemCost(it);
   const tags = [it.kind === 'battery' && it.ah ? `<span class="tag accent">${fmt(it.ah, it.ah % 1 ? 1 : 0)}Ah${it.batType ? ' ' + esc(it.batType) : ''}</span>` : '',
@@ -602,17 +637,17 @@ function viewPower() {
     return `<section class="card plat-card b-${esc(norm(p.brand).replace(/\s/g, '-'))}" id="${esc(p.id)}"><div class="card-head"><h3>${esc(p.label)}</h3><a class="link sm" href="#/tools?g=platform&f=${encodeURIComponent(p.label)}">List ${I.right}</a></div>
       <div class="stats four">${stat('Batteries', fmt(p.bats.length))}${stat('Total Ah', fmt(ah, ah % 1 ? 1 : 0))}${stat('Tools', fmt(p.tools.length))}${stat('Chargers', fmt(p.chargers.length))}</div>
       ${p.tools.length && p.bats.length ? `<p class="ratio">${p.tools.length >= p.bats.length ? `${fmt(p.tools.length / p.bats.length, 1)} tools per battery` : `${fmt(p.bats.length / p.tools.length, 1)} batteries per tool`}${p.chargers.length ? '' : ' · <b>no charger logged</b>'}</p>` : p.tools.length ? `<p class="ratio warn">${plural(p.tools.length, 'tool')} but no ${esc(pl ? pl.name : p.label)} batteries logged.</p>` : ''}
-      ${byAh.length ? `<div class="fhead">Batteries</div><div class="bat-chips">${byAh.map(([k, l]) => `<span class="bat-chip"><b>${l.length}×</b> ${esc(k)}</span>`).join('')}</div>` : ''}
+      ${byAh.length ? `<div class="fhead">Batteries</div><div class="bat-chips">${byAh.map(([k, l]) => `<span class="bat-chip">${thumb(l.find(x => x.photos && x.photos[0]) || l[0], 'mini')}<span><b>${l.length}×</b> ${esc(k)}</span></span>`).join('')}</div>` : ''}
       ${weak ? `<p class="muted" style="margin:8px 0 0">${plural(weak, 'battery', 'batteries')} marked fading, weak or dead.</p>` : ''}
-      ${p.tools.length ? `<div class="fhead">Runs on these batteries</div><div class="tool-chips">${p.tools.sort((a, b) => String(a.name).localeCompare(String(b.name))).map(t => `<a href="#/item/${t.id}" class="tool-chip">${esc(t.name)}${t.model ? `<small>${esc(t.model)}</small>` : ''}</a>`).join('')}</div>` : ''}
-      ${p.chargers.length ? `<div class="fhead">Chargers</div><div class="tool-chips">${p.chargers.map(t => `<a href="#/item/${t.id}" class="tool-chip">${esc(t.name)}${t.model ? `<small>${esc(t.model)}</small>` : ''}</a>`).join('')}</div>` : ''}
+      ${p.tools.length ? `<div class="fhead">Runs on these batteries</div><div class="tool-chips">${p.tools.sort((a, b) => String(a.name).localeCompare(String(b.name))).map(t => `<a href="#/item/${t.id}" class="tool-chip">${thumb(t, 'mini')}<span>${esc(t.name)}${t.model ? `<small>${esc(t.model)}</small>` : ''}</span></a>`).join('')}</div>` : ''}
+      ${p.chargers.length ? `<div class="fhead">Chargers</div><div class="tool-chips">${p.chargers.map(t => `<a href="#/item/${t.id}" class="tool-chip">${thumb(t, 'mini')}<span>${esc(t.name)}${t.model ? `<small>${esc(t.model)}</small>` : ''}</span></a>`).join('')}</div>` : ''}
       ${pl && pl.note ? `<p class="muted plat-note">${esc(pl.note)}</p>` : ''}</section>`;
   };
   const live = ps.filter(p => !p.none), none = ps.filter(p => p.none);
   return `<div class="page-title"><h2>Battery platforms</h2><button class="btn small primary" data-act="addBattery">${I.plus} Battery</button></div>
     <p class="muted lead">Which tools run on which batteries, and how much power you have for each platform.</p>
     ${live.map(card).join('') || '<div class="empty"><div class="big">No battery platforms yet</div><p>Add a tool or battery with a platform like ONE+ 18V or M18.</p></div>'}
-    ${none.length ? `<section class="card"><h3>No battery needed</h3><div class="tool-chips">${none.flatMap(p => [...p.tools, ...p.other]).map(t => `<a href="#/item/${t.id}" class="tool-chip">${esc(t.name)}</a>`).join('')}</div></section>` : ''}`;
+    ${none.length ? `<section class="card"><h3>No battery needed</h3><div class="tool-chips">${none.flatMap(p => [...p.tools, ...p.other]).map(t => `<a href="#/item/${t.id}" class="tool-chip">${thumb(t, 'mini')}<span>${esc(t.name)}</span></a>`).join('')}</div></section>` : ''}`;
 }
 function viewItem(id) {
   const it = itemById(id); if (!it) return `<a href="#/tools" class="back">${I.back} Inventory</a><div class="empty"><div class="big">Item not found</div><p>It may have been deleted on another device.</p></div>`;
@@ -623,12 +658,13 @@ function viewItem(id) {
   const peers = it.platform ? db.items.filter(x => x !== it && active(x) && itemPlats(x).includes(it.platform)) : [];
   return `<a href="#/tools" class="back">${I.back} Inventory</a>
     <section class="card item-hero">
-      ${it.photos && it.photos.length ? `<div class="gallery">${it.photos.map((p, i) => `<span class="ph ${i ? 'sm' : 'big'}"><img data-ph="${esc(p)}" ${i ? '' : 'data-full="1"'} alt="Photo of ${esc(itemTitle(it))}"></span>`).join('')}</div>` : `<button class="ph-empty" data-act="addPhoto">${I.camera}<span>Add a photo</span></button>`}
+      ${it.photos && it.photos.length ? `<div class="gallery">${it.photos.map((p, i) => `<span class="ph ${i ? 'sm' : 'big'}"><img data-ph="${esc(p)}" ${i ? '' : 'data-full="1"'} alt="Photo of ${esc(itemTitle(it))}"></span>`).join('')}</div>` : `<div class="ph-none">${comicIcon(it, 'hero-ic')}<button class="ph-empty" data-act="addPhoto" data-id="${it.id}">${I.camera}<span>Add a photo</span><small>It becomes the thumbnail everywhere</small></button></div>`}
+      ${snapFor === it.id && !(it.photos && it.photos.length) ? `<div class="snap-prompt" role="status"><b>${I.camera} Snap a photo?</b><span>Saved for ${esc(itemTitle(it))}. A quick photo makes it easy to spot in lists and helps with insurance claims.</span><div class="row-actions"><button class="btn primary" data-act="addPhoto" data-id="${it.id}">${I.camera} Snap a photo</button><button class="btn" data-act="snapLater">Later</button></div></div>` : ''}
       <div class="eyebrow">${esc([it.brand, platLabel(it.platform, it), kindL(it.kind)].filter(Boolean).join(' · '))}</div>
       <h2>${esc(itemTitle(it))}</h2>${it.model ? `<p class="model">Model ${esc(it.model)}</p>` : ''}
       <div class="tags">${pill(w)}${it.condition ? `<span class="tag">${esc(it.condition)}</span>` : ''}${!active(it) ? `<span class="tag warn">${esc(it.status)}</span>` : ''}${it.loanedTo ? `<span class="tag warn">With ${esc(it.loanedTo)} since ${esc(fdate(it.loanedOn))}</span>` : ''}</div>
       <div class="stats">${stat('Paid', c != null ? money(c) : '—')}${stat('Owned', ageT || '—')}${stat(w.level === 'over' ? 'Expired' : 'Warranty', w.end ? new Date(w.end + 'T12:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—')}</div>
-      <div class="row-actions"><button class="btn primary" data-act="editItem" data-id="${it.id}">${I.edit} Edit</button><button class="btn" data-act="lend" data-id="${it.id}">${I.hand} ${it.loanedTo ? 'Returned' : 'Lend'}</button></div></section>
+      <div class="row-actions"><button class="btn primary" data-act="editItem" data-id="${it.id}">${I.edit} Edit</button><button class="btn" data-act="lend" data-id="${it.id}">${I.hand} ${it.loanedTo ? 'Returned' : 'Lend'}</button><button class="btn cam-btn" data-act="addPhoto" data-id="${it.id}" aria-label="Add a photo of ${esc(itemTitle(it))}">${I.camera} Photo</button></div></section>
     <section class="card"><h3>Details</h3>
       ${row('Serial #', it.serial ? `<span class="mono">${esc(it.serial)}</span>` : '<span class="muted">Add it for insurance</span>')}${row('Tool type', esc(it.type || ''))}${row('Line', esc(it.line || ''))}${row('Voltage', it.voltage ? esc(it.voltage + 'V') : '')}
       ${it.kind === 'battery' ? row('Capacity', it.ah ? esc(fmt(it.ah, it.ah % 1 ? 1 : 0) + 'Ah') : '') + row('Battery type', esc(it.batType || '')) + row('In service', it.inService ? esc(fdate(it.inService)) : '') + row('Charge cycles', it.cycles != null ? esc(fmt(it.cycles)) : '') + row('Health', esc(it.health || '')) : ''}
@@ -686,7 +722,7 @@ function viewPrint() {
     <article class="print-sheet"><header class="ps-head"><img src="img/riznoss-crest-solid.webp" alt="" width="34" height="39"><div><h1>Tool &amp; equipment inventory</h1><p>${db.settings.owner ? esc(db.settings.owner) + ' · ' : ''}Generated ${esc(fdate(todayISO()))} with Tool Crizib</p></div>
       <div class="ps-tot"><span>${plural(act.length, 'item')}</span><b>${money(total)}</b></div></header>
       <table class="ps-t"><thead><tr><th>Photo</th><th>Item</th><th>Serial #</th><th>Purchased</th><th class="r">Paid</th></tr></thead><tbody>
-      ${act.map(x => { const k = x.kitId && kitById(x.kitId); return `<tr><td class="ps-ph">${x.photos && x.photos[0] ? `<img data-ph="${esc(x.photos[0])}" alt="">` : ''}</td><td><b>${esc(itemTitle(x))}</b><small>${esc([x.brand, platLabel(x.platform, x), x.model && 'Model ' + x.model].filter(Boolean).join(' · '))}${k ? `<br>Part of ${esc(k.name)}${k.model ? ' (' + esc(k.model) + ')' : ''}` : ''}${x.condition ? ` · ${esc(x.condition)}` : ''}${x.location ? ` · ${esc(x.location)}` : ''}</small></td><td class="mono">${esc(x.serial || '—')}</td><td>${esc(x.purchased ? fdate(x.purchased) : '—')}<small>${esc(x.store || '')}</small></td><td class="r">${esc(money(itemCost(x)))}${x.free ? '<small>free</small>' : k ? '<small>kit share</small>' : ''}</td></tr>`; }).join('')}
+      ${act.map(x => { const k = x.kitId && kitById(x.kitId); return `<tr><td class="ps-ph">${x.photos && x.photos[0] ? `<img data-ph="${esc(x.photos[0])}" alt="Photo of ${esc(itemTitle(x))}">` : comicIcon(x, 'print-ic')}</td><td><b>${esc(itemTitle(x))}</b><small>${esc([x.brand, platLabel(x.platform, x), x.model && 'Model ' + x.model].filter(Boolean).join(' · '))}${k ? `<br>Part of ${esc(k.name)}${k.model ? ' (' + esc(k.model) + ')' : ''}` : ''}${x.condition ? ` · ${esc(x.condition)}` : ''}${x.location ? ` · ${esc(x.location)}` : ''}</small></td><td class="mono">${esc(x.serial || '—')}</td><td>${esc(x.purchased ? fdate(x.purchased) : '—')}<small>${esc(x.store || '')}</small></td><td class="r">${esc(money(itemCost(x)))}${x.free ? '<small>free</small>' : k ? '<small>kit share</small>' : ''}</td></tr>`; }).join('')}
       </tbody><tfoot><tr><td colspan="4">Total price paid</td><td class="r">${esc(money(total))}</td></tr></tfoot></table>
       <footer class="ps-foot">RIZNOSS · Chamber 02 · Tool Crizib. Values are what the owner paid, not replacement cost.</footer></article>`;
 }
@@ -750,6 +786,9 @@ function viewAbout() {
       <p class="rz-copy">Every tool, battery and charger you own: serials, price paid, warranty, platform and who borrowed it. On your own device, no ads, no tracking. Sync only happens if you sign in.</p>
       <div class="rz-meta"><div><span>Version</span><b>v${APP_VERSION}</b></div><div><span>Your data</span><b>${synced ? 'This device + your account' : 'This device only'}</b></div><div><span>Items</span><b>${fmt(db.items.length)}</b></div><div><span>Catalog</span><b>${CAT ? fmt(CAT.items.length) + ' products' : 'RYOBI + Milwaukee'}</b></div></div>
       <div class="rz-sign">Protect ya data.</div></section>
+    <section class="card" id="icons"><h3>Comic icon set</h3><p class="muted" style="margin:6px 0 12px">When an item has no photo, it gets one of these. Same RIZNOSS blue for every brand; the corner tag shows the brand.</p>
+      <div class="ci-sheet">${CI_KEYS.map(k => `<figure>${comicIcon({ name: '', type: '', kind: k === 'battery' ? 'battery' : k === 'charger' ? 'charger' : 'tool', isKit: k === 'kit', ...(k === 'battery' ? { voltage: 18, ah: 4 } : {}), _k: k })}<figcaption>${esc(CI_LABEL[k])}</figcaption></figure>`).join('')}</div>
+      <div class="fhead" style="margin-top:14px">Brand tag</div><div class="ci-sheet">${[['RYOBI', 'RYOBI'], ['Milwaukee', 'Milwaukee'], ['', 'Other brand']].map(([b, l]) => `<figure>${comicIcon({ brand: b, type: 'Drill / driver' })}<figcaption>${esc(l)}</figcaption></figure>`).join('')}</div></section>
     <section class="card"><h3>Share Tool Crizib</h3><p class="muted" style="margin:6px 0 10px">Send the invite page. It walks people through opening it in Safari, adding it to their Home Screen and signing up.</p><div class="btn-row"><button class="btn small primary" data-act="shareApp">${I.share} Share Tool Crizib</button></div><p class="muted" style="font-size:.8rem;margin:8px 0 0;word-break:break-all">${JOIN_URL}</p></section>
     <section class="card"><h3>Catalog sources</h3><p class="muted" style="margin:6px 0 0">Model numbers come from the makers’ public product pages (ryobitools.com, milwaukeetool.com). Product names are trademarks of their owners; Tool Crizib isn’t affiliated with RYOBI, Techtronic Industries or Milwaukee Tool.</p></section>
     <section class="card"><h3>Also from RIZNOSS</h3><a class="srow" href="../autolog/"><span class="sicon">${svg('<path d="M5 16V11l2-5h10l2 5v5"/><path d="M3 16h18v3H3z"/>')}</span><div class="sbody"><b>AutoLog · Chamber 01</b><small>Fuel, maintenance and cost of ownership</small></div>${I.right}</a></section>`;
@@ -828,7 +867,7 @@ function applyTheme() {
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   $('#themeColor')?.setAttribute('content', dark ? '#07090f' : '#f3f5f9');
 }
-let lastRoute = '';
+let lastRoute = '', snapFor = null;
 function render() {
   const r = route(), app = $('#app');
   const views = { dash: viewDash, tools: () => viewTools(r.params), item: () => viewItem(r.arg), kit: () => viewKit(r.arg), power: viewPower, export: viewExport, print: viewPrint, more: viewMore, about: viewAbout };
@@ -838,7 +877,7 @@ function render() {
   document.body.classList.toggle('printing', r.name === 'print');
   $$('#tabbar a').forEach(a => a.classList.toggle('on', a.dataset.tab === TABS[r.name]));
   $('#fab').hidden = !['dash', 'tools', 'power'].includes(r.name) || !db.items.length;
-  paintPhotos(app); updateBell();
+  Photos.sweep(); paintPhotos(app); updateBell();
   if (key !== lastRoute) { if (!scrollLock.isOn()) { const anchor = location.hash.split('#')[2]; const el = anchor && document.getElementById(anchor); if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 0); else window.scrollTo(0, 0); } }
   else if (!scrollLock.isOn()) window.scrollTo(0, y);
   lastRoute = key;
@@ -854,7 +893,8 @@ const ACTIONS = {
   dup: b => { const it = itemById(b.dataset.id); if (!it) return; const { id, serial, photos, receipt, created, updated, loanedTo, loanedOn, ...rest } = it; itemForm(null, { ...rest, catId: it.catId || undefined, src: it.src }); },
   lend: async b => { const it = itemById(b.dataset.id); if (!it) return; if (it.loanedTo) { it.loanedTo = ''; it.loanedOn = ''; it.updated = new Date().toISOString(); save(); render(); toast('Marked as returned'); return; }
     const who = prompt('Who are you lending it to?'); if (!who || !who.trim()) return; it.loanedTo = who.trim(); it.loanedOn = todayISO(); it.updated = new Date().toISOString(); save(); render(); toast(`Loaned to ${it.loanedTo}`); },
-  addPhoto: () => { const it = itemById(route().arg); if (!it) return; const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*'; f.multiple = true; f.onchange = async () => { for (const fl of f.files) { try { it.photos = [...(it.photos || []), await Photos.add(fl)]; } catch (e) { toast('Couldn’t read that photo'); } } it.updated = new Date().toISOString(); save(); render(); }; f.click(); },
+  addPhoto: b => { const it = itemById((b && b.dataset.id) || route().arg); if (!it) return; const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*'; f.multiple = true; f.onchange = async () => { let n = 0; for (const fl of f.files) { try { it.photos = [...(it.photos || []), await Photos.add(fl)]; n++; } catch (e) { toast('Couldn’t save that photo on this device. Private Browsing can’t keep photos.'); } } if (!n) return; snapFor = null; it.updated = new Date().toISOString(); save(); render(); toast(n === 1 ? 'Photo added' : `${n} photos added`); }; f.click(); },
+  snapLater: () => { snapFor = null; render(); },
   ics: b => { const it = itemById(b.dataset.id); if (it) download(`warranty-${norm(it.model || it.name).replace(/\s/g, '-')}.ics`, icsFor([it]), 'text/calendar'); },
   icsAll: () => { const l = db.items.filter(x => active(x) && warrantyEnd(x) && warrantyEnd(x) >= todayISO()); if (!l.length) { toast('No upcoming warranty dates yet'); return; } download(`tool-crizib-warranties-${todayISO()}.ics`, icsFor(l), 'text/calendar'); toast(`${plural(l.length, 'warranty date')} exported`); },
   notif: async () => { try { const p = await Notification.requestPermission(); if (p === 'granted') { toast('Notifications on'); notifyDue(); } render(); } catch (e) { toast('This browser can’t show notifications'); } },
@@ -895,7 +935,7 @@ function registerSW() {
 /* ---------- public API for sync.js + tests ---------- */
 window.ToolLogApp = {
   getDb: () => db, replaceDb: d => { db = normalize(d); try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { toast('Couldn’t save synced data. Storage may be full.'); } render(); },
-  toast, render, loadCatalog, Photos, version: APP_VERSION,
+  toast, render, loadCatalog, Photos, version: APP_VERSION, iconKey, CI_KEYS, CI_LABEL,
 };
 applyTheme(); showSplash(); render(); registerSW();
 setTimeout(notifyDue, 2500);

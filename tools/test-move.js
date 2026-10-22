@@ -42,7 +42,7 @@ const check = (n, c, x) => { r[n] = c ? 'PASS' : 'FAIL' + (x !== undefined ? ' '
   check('new name shown', /Tool Crizib/.test(after.title), after.title);
   const sw = await p.evaluate(async () => ({ regs: (await navigator.serviceWorker.getRegistrations()).map(x => new URL(x.scope).pathname), caches: await caches.keys() }));
   check('old /toollog/ worker retired', !sw.regs.includes('/toollog/'), sw.regs);
-  check('old cache removed, new cache present', !sw.caches.includes('toollog-v1') && sw.caches.includes('toolcrizib-v2'), sw.caches);
+  check('old cache removed, new cache present', !sw.caches.includes('toollog-v1') && sw.caches.includes('toolcrizib-v3'), sw.caches);
   for (const [from, to] of [['/toollog/join/', '/toolcrizib/join/'], ['/toollog/?join=1', '/toolcrizib/'], ['/toollog/#/power', '/toolcrizib/#/power'], ['/toollog/', '/toolcrizib/']]) {
     const q = await ctx.newPage(); await q.goto(ORIGIN + from).catch(() => {}); await q.waitForFunction(() => location.pathname.startsWith('/toolcrizib/'), { timeout: 10000 }).catch(() => {});
     const got = new URL(q.url()); if (!got.pathname.startsWith('/toolcrizib/')) r['dbg ' + from] = await q.evaluate(() => document.title + ' | ' + (navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL)); check(`${from} → ${to}`, (got.pathname + got.hash) === to.replace('?join=1', ''), q.url()); await q.close();

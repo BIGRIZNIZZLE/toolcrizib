@@ -1,9 +1,11 @@
 /* Tool Crizib service worker: offline app shell, lazily cached catalog, update prompt. */
-const CACHE = 'toolcrizib-v2';
+const CACHE = 'toolcrizib-v3';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './taxonomy.js', './sync.js', './manifest.json', './favicon.ico',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/logo-192.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png',
-  './img/riznoss-crest-solid.webp', './img/riznoss-crest.webp', './img/riznoss-lockup.webp', './img/riznoss-watermark.png'
+  './img/riznoss-crest-solid.webp', './img/riznoss-crest.webp', './img/riznoss-lockup.webp', './img/riznoss-watermark.png',
+  // comic icon set (32 small WebPs) so fallbacks work offline
+  ...'battery blower chainsaw charger circsaw drill fan gluegun grinder hammerdrill heatgun hedge impactdriver impactwrench inflator jigsaw kit light miter mower multitool nailer other pressure radio recip rotary router sander tablesaw trimmer vacuum'.split(' ').map(k => `./icons/comic/${k}.webp`)
 ];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))); });
 self.addEventListener('message', e => { if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting(); });
